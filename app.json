@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Conto in Valigia",
+    "slug": "conto-in-valigia",
+    "version": "0.21.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#F5FBFA"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.campertrip.app"
+    },
+    "android": {
+      "package": "com.campertrip.app",
+      "versionCode": 21
+    }
+  }
+}
