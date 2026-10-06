@@ -109,6 +109,7 @@ export default function App() {
   const [storageLoaded, setStorageLoaded] = useState(false);
   const [tab, setTab] = useState('home');
   const [selectedTripId, setSelectedTripId] = useState(null);
+  const [vehicle, setVehicle] = useState({ name: '', model: '', plate: '', length: '', weight: '', fuel: '', notes: '' });
   const [modal, setModal] = useState(null);
   const [newTrip, setNewTrip] = useState({ name: '', destination: '', start: '', end: '', budget: '', notes: '', stops: [] });
   const [newStop, setNewStop] = useState('');
@@ -121,12 +122,14 @@ export default function App() {
     let active = true;
     (async () => {
       try {
+        const vehicleRaw = await AsyncStorage.getItem('conto-in-valigia-vehicle');
+        if (vehicleRaw) setVehicle(JSON.parse(vehicleRaw));
+
         const raw = await AsyncStorage.getItem('conto-in-valigia-data');
         if (!active) return;
         if (raw) {
           setTrips(JSON.parse(raw));
         } else {
-          // Migrazione dei dati della versione precedente
           const oldRaw = await AsyncStorage.getItem('campertrip-data');
           if (oldRaw) {
             setTrips(JSON.parse(oldRaw));
@@ -141,10 +144,17 @@ export default function App() {
     })();
     return () => { active = false; };
   }, []);
+
   useEffect(() => {
     if (!storageLoaded) return;
-    AsyncStorage.setItem('conto-in-valigia-data', JSON.stringify(trips)).catch(e => console.warn('Impossibile salvare i dati locali', e));
+    AsyncStorage.setItem('conto-in-valigia-data', JSON.stringify(trips))
+      .catch(e => console.warn('Impossibile salvare i dati locali', e));
   }, [trips, storageLoaded]);
+
+  useEffect(() => {
+    AsyncStorage.setItem('conto-in-valigia-vehicle', JSON.stringify(vehicle))
+      .catch(e => console.warn('Impossibile salvare il profilo veicolo', e));
+  }, [vehicle]);
 
   async function exportBackup() {
     try {
@@ -315,7 +325,8 @@ export default function App() {
           {tab === 'next' && <NextScreen trips={nextTrips} onOpen={openTrip} onAdd={() => setModal('trip')} onStart={startTrip} />}
           {tab === 'current' && <CurrentScreen trip={currentTrip} onAdd={openExpense} onEditExpense={openExpenseEdit} onDeleteExpense={deleteExpense} onEnd={endTrip} onFuel={() => { resetFuelForm(); setNewFuel({ amount: '', liters: '', pricePerLiter: '', km: '', date: new Date().toLocaleDateString('it-IT'), place: '', note: '' }); setModal('fuel'); }} onEditFuel={openFuelEdit} onDeleteFuel={deleteFuel} />}
           {tab === 'past' && <PastScreen trips={pastTrips} selected={selectedTrip} onOpen={setSelectedTripId} onBack={() => setSelectedTripId(null)} />}
-          {tab === 'settings' && <SettingsScreen onBackup={exportBackup} onImport={importBackup} onExport={exportCsv} />}
+          {tab === 'vehicle' && <VehicleScreen vehicle={vehicle} setVehicle={setVehicle} onBack={() => setTab('settings')} />}
+          {tab === 'settings' && <SettingsScreen onBackup={exportBackup} onImport={importBackup} onExport={exportCsv} onVehicle={() => setTab('vehicle')} />}
         </ScrollView>
         <BottomNav tab={tab} setTab={setTab} />
       </View>
@@ -661,13 +672,16 @@ function PastDetail({ trip, onBack }) {
   </>;
 }
 
-function SettingsScreen({ onBackup, onImport, onExport }) { return <><Header title="Impostazioni" /><Setting icon="🚐" title="Profilo veicolo" sub="Modello, consumi, targa" /><Setting icon="🏷️" title="Categorie di spesa" sub="Personalizza le categorie" /><Setting icon="📏" title="Unità e preferenze" sub="Km, litri, valuta" /><Setting icon="💾" title="Crea backup" sub="Salva tutti i viaggi in un file" onPress={onBackup} /><Setting icon="📥" title="Ripristina backup" sub="Importa un backup precedentemente salvato" onPress={onImport} /><Setting icon="📤" title="Esporta dati" sub="Esporta un file CSV leggibile anche con Excel" onPress={onExport} /><Setting icon="ℹ️" title="Informazioni app" sub="Conto in Valigia 0.20 · funziona offline" /></>; }
+function VehicleScreen({ vehicle, setVehicle, onBack }) { return <><Header title="Profilo veicolo" action="‹ Indietro" onAction={onBack} /><View style={{ gap: 12 }}><Field label="Nome veicolo" value={vehicle.name} onChangeText={v => setVehicle({ ...vehicle, name: v })} placeholder="Es. Il nostro camper" /><Field label="Marca e modello" value={vehicle.model} onChangeText={v => setVehicle({ ...vehicle, model: v })} placeholder="Es. Fiat Ducato" /><Field label="Targa" value={vehicle.plate} onChangeText={v => setVehicle({ ...vehicle, plate: v })} placeholder="Es. AB123CD" autoCapitalize="characters" /><Field label="Lunghezza" value={vehicle.length} onChangeText={v => setVehicle({ ...vehicle, length: v })} placeholder="Es. 7,20 m" /><Field label="Peso" value={vehicle.weight} onChangeText={v => setVehicle({ ...vehicle, weight: v })} placeholder="Es. 3500 kg" /><Field label="Tipo carburante" value={vehicle.fuel} onChangeText={v => setVehicle({ ...vehicle, fuel: v })} placeholder="Es. Diesel" /><Field label="Note" value={vehicle.notes} onChangeText={v => setVehicle({ ...vehicle, notes: v })} placeholder="Informazioni aggiuntive" multiline />
+        <Button label="💾 Salva profilo" onPress={() => AsyncStorage.setItem('conto-in-valigia-vehicle', JSON.stringify(vehicle))} />
+      </View>
+    </>; }
+function SettingsScreen({ onBackup, onImport, onExport, onVehicle }) { return <><Header title="Impostazioni" /><Setting icon="🚐" title="Profilo veicolo" sub="Modello, consumi, targa" onPress={onVehicle} /><Setting icon="🏷️" title="Categorie di spesa" sub="Personalizza le categorie" /><Setting icon="📏" title="Unità e preferenze" sub="Km, litri, valuta" /><Setting icon="💾" title="Crea backup" sub="Salva tutti i viaggi in un file" onPress={onBackup} /><Setting icon="📥" title="Ripristina backup" sub="Importa un backup precedentemente salvato" onPress={onImport} /><Setting icon="📤" title="Esporta dati" sub="Esporta un file CSV leggibile anche con Excel" onPress={onExport} /><Setting icon="ℹ️" title="Informazioni app" sub="Conto in Valigia 0.20 · funziona offline" /></>; }
 
 function Header({ title, action, onAction }) { return <View style={styles.header}><Text style={styles.headerTitle}>{title}</Text>{action && <Pressable onPress={onAction} style={styles.headerAction}><Text style={styles.headerActionText}>{action}</Text></Pressable>}</View>; }
 function HomeTile({ emoji, title, text, onPress }) { return <Pressable onPress={onPress} style={styles.homeTile}><Text style={styles.tileEmoji}>{emoji}</Text><View style={{ flex: 1 }}><Text style={styles.tileTitle}>{title}</Text><Text style={styles.tileText}>{text}</Text></View><Text style={styles.arrow}>›</Text></Pressable>; }
 function TripCard({ trip, onPress }) { const total = totalOf(trip); const stops = trip.stops || []; return <Pressable onPress={onPress} style={styles.card}><View style={styles.cardImage}><Text style={{ fontSize: 32 }}>{trip.destination?.includes('Sardegna') ? '🏝️' : trip.destination?.includes('Francia') ? '🌅' : '🏔️'}</Text></View><View style={{ flex: 1 }}><Text style={styles.cardTitle}>{trip.name}</Text><Text style={styles.cardSub}>{trip.start} — {trip.end}</Text><Text style={styles.cardSub}>📍 {trip.destination}</Text>{stops.length > 0 && <Text style={styles.cardSub}>🧭 {stops.length} {stops.length === 1 ? 'tappa' : 'tappe'}</Text>}<View style={styles.badge}><Text style={styles.badgeText}>Budget: {money(trip.budget)}</Text></View>{trip.status === 'past' && <Text style={styles.cardTotal}>Speso: {money(total)}</Text>}</View><Text style={styles.arrow}>›</Text></Pressable>; }
 function PastCard({ trip, onPress }) { return <TripCard trip={trip} onPress={onPress} />; }
-function QuickAction({ emoji, title, subtitle, onPress, color }) { return <Pressable onPress={onPress} style={styles.quickAction}><View style={[styles.quickActionIcon, { backgroundColor: color }]}><Text style={{ fontSize: 24 }}>{emoji}</Text></View><View style={{ flex: 1 }}><Text style={styles.quickActionTitle}>{title}</Text><Text style={styles.quickActionSub}>{subtitle}</Text></View><Text style={styles.quickActionArrow}>+</Text></Pressable>; }
 function ExpenseRow({ expense }) { const c = CATEGORIES.find(x => x.id === expense.category) || CATEGORIES[6]; return <View style={styles.expenseRow}><View style={[styles.expenseIcon, { backgroundColor: c.color + '22' }]}><Text>{c.emoji}</Text></View><View style={{ flex: 1 }}><Text style={styles.expenseTitle}>{c.label}</Text><Text style={styles.expenseSub}>{expense.place || '—'} · {expense.date || '—'}{expense.note ? ` · ${expense.note}` : ''}</Text></View><Text style={styles.expenseAmount}>{money(expense.amount)}</Text></View>; }
 function Stat({ label, value }) { return <View style={styles.stat}><Text style={styles.statLabel}>{label}</Text><Text style={styles.statValue}>{value}</Text></View>; }
 function Setting({ icon, title, sub, onPress }) { const content = <View style={styles.setting}><Text style={styles.settingIcon}>{icon}</Text><View style={{ flex: 1 }}><Text style={styles.settingTitle}>{title}</Text><Text style={styles.settingSub}>{sub}</Text></View><Text style={styles.arrow}>›</Text></View>; return onPress ? <Pressable onPress={onPress}>{content}</Pressable> : content; }

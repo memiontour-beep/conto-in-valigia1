@@ -16,6 +16,11 @@
     "android": {
       "package": "com.campertrip.app",
       "versionCode": 21
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1a73b591-bbc7-4098-9e0b-3c73a29a02c3"
+      }
     }
   }
 }
